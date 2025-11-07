@@ -41,7 +41,7 @@ After the merge, we aggregated transactions to the customer level using groupby 
 
 ### **Formula**
 
-**CLTV = AOV × purchase_rate_per_year**
+**CLTV = AOV × Normalized Frequency x lifespan**
 
 ### **Explanation**
 
@@ -51,20 +51,35 @@ After the merge, we aggregated transactions to the customer level using groupby 
   cust['AOV'] = cust['monetary_value'] / cust['frequency']
 
 
-**2. Purchase Rate per Year**  
+**2. Normalized Frequency**  
 Normalized purchase frequency over the customer’s active duration.  
 
 ```python
-cust['purchase_rate_per_year'] = cust.apply(
-    lambda row: row['frequency'] if row['frequency'] < 3 
-    else int((row['frequency'] / row['lifetime_days']) * 365),
-    axis=1
-)
-```
-Average Customer Lifetime (in years):
-Computed as lifetime_days / 365.
+cust['days_since_first_purchase'] = (analysis_date - cust['first_tx']).dt.days
 
-This heuristic provides a relative CLTV ranking that works well for segmentation and business targeting, even if it’s not a fully predictive model.
+def calc_purchase_rate(row):
+    if row['frequency'] < 3 or row['days_since_first_purchase'] < 7:
+        return row['frequency']
+    else:
+        return round((row['frequency'] / row['days_since_first_purchase']) * 365)
+lifespan = 2
+cust['norm_freq'] = cust.apply(calc_purchase_rate, axis=1)
+```
+### 🧭 Why Normalized Frequency?
+
+Using raw purchase frequency alone can be misleading.  
+
+For example:  
+> A customer who made **12 purchases in one month** is far more engaged than another who made **12 purchases over an entire year**.
+
+To address this, frequency is **normalized** by the customer’s active duration.  
+
+- **`days_since_first_purchase`** measures the number of days between a customer’s first purchase and the analysis date (end of 2024).  
+- The **first purchase date** is treated as the customer’s “signup date,” so earlier months are assumed to reflect consistent purchase behavior.  
+
+This normalization provides a **more realistic view of customer engagement and spending intensity** over time, rather than just counting total transactions.
+
+sources state that coffee shop customer lifetime often ranges 1–3 years for cafés so the safest option is to assume 2 years.
 
 ## 🎯 RFM Segmentation
 
@@ -73,21 +88,21 @@ Each customer was scored across **Recency**, **Frequency**, and **Monetary** met
 ### Bin Definitions
 
 ```python
-recency_bins = [0, 10, 30, 45, 90, cust['recency'].max()]
+recency_bins = [0, 7, 21, 55, 90, cust['recency'].max()]
 recency_labels = [5, 4, 3, 2, 1]
 
-freq_bins = [0, 5, 24, 60, 180, cust['purchase_rate_per_year'].max()]
+freq_bins = [0, 4, 26, 52, 104, cust['norm_freq'].max()] 
 freq_labels = [1, 2, 3, 4, 5]
 
-monetary_bins = [0, 60, 150, 220, 350, cust['AOV'].max()]
+monetary_bins = [0, 60, 120, 180, 250, cust['AOV'].max()]
 monetary_labels = [1, 2, 3, 4, 5]
 ```
 
 ### 🧮 RFM Scoring Logic
 
-- **Recency:** Smaller is better — recent activity results in a **higher score**.  
-- **Frequency:** Higher normalized purchase rate results in a **higher score**.  
-- **Monetary:** Larger spending per transaction results in a **higher score**.  
+- **Recency:** adjusted the margins to fit a coffee shop establishment.  
+- **Frequency:** I classified the Customers into 5 catigories: twice a week | weekly | bi-weekly......  
+- **Monetary:** Scanned the Cilantro app to be able to make reasonable ranges and used the AOV not the sum as i want to focus on the quality not quantity or orders.  
 
 The **combined RFM score** (sum of Recency, Frequency, and Monetary scores) determines the **customer segment labels**, such as:
 
@@ -110,7 +125,6 @@ Contains all customer-level computed metrics:
 | `recency`        | Days since last transaction                  |
 | `frequency`      | Total number of transactions                 |
 | `monetary_value` | Total spend by customer                      |
-| `AOV`            | Average Order Value                          |
 | `CLTV`           | Heuristic Lifetime Value                     |
 | `segment`        | Assigned RFM-based segment                   |
 | `lifetime_days`  | Days between first and last purchase         |
@@ -155,4 +169,3 @@ channel_summary.to_csv("acquisition_channel_summary.csv", index=False)
 - **Champions** represent roughly **1% of customers** but contribute the **highest CLTV**, indicating strong loyalty and high-value behavior.  
 - **Potential Loyalists** and **At Risk** segments make up the **majority of users**, making them ideal targets for **retention and reactivation campaigns**.  
 - **Inactive users** form the **largest portion** of the customer base — implementing **personalized offers, loyalty rewards, or targeted discounts** could help bring them back and increase engagement.
-
