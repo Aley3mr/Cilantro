@@ -114,6 +114,22 @@ The **combined RFM score** (sum of Recency, Frequency, and Monetary scores) dete
 | **At Risk**             | Declining activity                         |
 | **Inactive**            | Long inactive or churned                   |
 
+
+## 🔮 Predictive CLTV
+
+We trained ML models to estimate future CLTV using historical features: `recency`, `normalized frequency`, `AOV`, `lifetime_days`, `acquisition_channel`, and `segment`.
+Horizon = 1 year
+
+**Random forest Performance:**
+- R² Score: 0.67
+- MAE: 32.1
+- 
+**XGBoost Performance:**
+- R² Score: 0.744
+- MAE: 32.25
+
+This model predicts each customer’s CLTV for the next 12 months.
+
 # 📊 Generated Output Tables
 ## 1️⃣ User-Level Table
 
