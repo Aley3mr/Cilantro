@@ -170,6 +170,18 @@ Aggregates metrics by the marketing channel through which users signed up.
 | `avg_CLTV`            | Average lifetime value                              |
 | `avg_lifetime_days`   | Average retention duration                          |
 
+
+## 3️⃣ Predictive Output Table
+
+Holds results of the XGBoost model for the CLTV.
+
+| Column               | Description                                         |
+|-----------------------|-----------------------------------------------------|
+| `Customer_id`         | Unique customer identifier                          |
+| `Pred_CLTV`           | Predicted lifetime value                            |
+| `Horizon`             | Prediction range                                    |
+
+
 ### 💾 Output Files
 
 Each table is exported as a CSV file for reporting and further analysis:
@@ -178,6 +190,7 @@ Each table is exported as a CSV file for reporting and further analysis:
 user_summary.to_csv("user_level_summary.csv", index=False)
 segment_summary.to_csv("segment_summary.csv", index=False)
 channel_summary.to_csv("acquisition_channel_summary.csv", index=False)
+predictive_output.to_csv('predictive_output.csv', index=False)
 ```
 
 ## 💡 Key Insights
